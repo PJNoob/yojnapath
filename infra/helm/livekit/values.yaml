@@ -1,9 +1,9 @@
 image:
-  repository: ""
-  tag: ""
+  repository: asia-south1-docker.pkg.dev/voice-agent-yojnapath/yojnapath-dev-livekit/livekit
+  tag: dev
   pullPolicy: IfNotPresent
 existingSecret: yojnapath-livekit-keys
-mediaIP: ""
+mediaIP: 34.47.174.15
 resources:
   requests:
     cpu: 250m

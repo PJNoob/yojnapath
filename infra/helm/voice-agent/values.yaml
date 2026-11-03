@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
-  repository: ""
-  tag: ""
+  repository: asia-south1-docker.pkg.dev/voice-agent-yojnapath/yojnapath-dev-voice-agent/voice-agent
+  tag: 683ba9b
   pullPolicy: IfNotPresent
 existingSecret: yojnapath-worker-env
 resources:

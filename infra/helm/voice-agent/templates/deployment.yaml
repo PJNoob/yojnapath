@@ -30,6 +30,12 @@ spec:
           ports:
             - name: health
               containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            periodSeconds: 10
+            failureThreshold: 3
           envFrom:
             - secretRef:
                 name: {{ .Values.existingSecret | quote }}

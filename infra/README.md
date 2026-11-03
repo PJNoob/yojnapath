@@ -2,7 +2,7 @@
 
 This folder contains Docker, Terraform, and Helm for three GKE workloads: the Next.js website, self-hosted LiveKit, and the Python voice worker. Terraform creates a one-node zonal GKE Standard cluster, three private Artifact Registry repositories, a global HTTPS address, and a regional LiveKit UDP address.
 
-The website and LiveKit signaling share one GKE HTTPS Ingress with a Google managed certificate. Browser media uses LiveKit's UDP load balancer on port 7882. The worker has no public endpoint and connects to the internal LiveKit Service, Groq, and Sarvam. This is a private beta footprint; a single-node interruption stops calls.
+The website and LiveKit signaling share one GKE HTTPS Ingress with a Google managed certificate. Browser media uses LiveKit's UDP load balancer on port 7882. The worker has a private ClusterIP Service on port 8081 for health checks; it has no public endpoint and connects to the internal LiveKit Service, Groq, and Sarvam. This is a private beta footprint; a single-node interruption stops calls.
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ make k8s-secret-livekit k8s-secret-backend k8s-secret-frontend
 make helm-deploy-livekit helm-deploy-backend helm-deploy-frontend
 ```
 
-Image push requires Artifact Registry Writer permission. Helm uses existing Kubernetes Secrets and starts one replica of each service. The images never copy `.env` files. Rotate the shared LiveKit key in all three Secrets together and restart their Deployments. Restrict Kubernetes Secret access.
+Image push requires Artifact Registry Writer permission. Each chart's `values.yaml` contains its Artifact Registry image URL; update the image tag for each release. The worker chart defaults to the already-pushed `683ba9b` tag. Helm uses existing Kubernetes Secrets and starts one replica of each service. The images never copy `.env` files. Rotate the shared LiveKit key in all three Secrets together and restart their Deployments. Restrict Kubernetes Secret access.
 
 Check `kubectl -n yojnapath get pods,svc,ingress,managedcertificate`. Test `https://yojnapath.asymptotiq.com/call` after the certificate becomes Active.
 
