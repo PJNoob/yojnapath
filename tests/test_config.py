@@ -13,8 +13,7 @@ def settings_values() -> dict[str, object]:
         "groq_api_key": SecretStr("groq-test"),
         "smallest_ai_api_key": None,
         "openai_api_key": None,
-        "sarvam_api_key": None,
-        "rumik_api_key": SecretStr("rumik-test"),
+        "sarvam_api_key": SecretStr("sarvam-test"),
         "livekit_sip_subdomain": None,
         "plivo_phone_number": None,
         "sip_room_prefix": "call-",
@@ -22,9 +21,11 @@ def settings_values() -> dict[str, object]:
         "groq_base_url": "https://groq.invalid/v1",
         "openai_base_url": None,
         "sarvam_base_url": None,
-        "rumik_base_url": "https://rumik.invalid",
         "smallest_base_url": "https://smallest.invalid/v1/",
-        "stt_provider": "groq",
+        "stt_provider": "sarvam",
+        "stt_sarvam_model": "saaras:v4",
+        "stt_sarvam_language": "hi-IN",
+        "stt_sarvam_mode": "codemix",
         "stt_groq_model": "whisper-test",
         "stt_pulse_model": "pulse",
         "stt_language": "en",
@@ -45,9 +46,9 @@ def settings_values() -> dict[str, object]:
         "llm_model": "llm-test",
         "llm_reasoning_effort": "none",
         "llm_max_completion_tokens": 128,
-        "tts_model": "muga",
-        "tts_tone": "neutral",
-        "tts_full_response_aggregation": True,
+        "tts_model": "bulbul:v3",
+        "tts_language": "hi-IN",
+        "tts_speaker": "shubh",
         "vad_min_speech_duration": 0.05,
         "vad_min_silence_duration": 0.55,
         "vad_prefix_padding_duration": 0.5,
@@ -62,10 +63,23 @@ def settings_values() -> dict[str, object]:
 
 def test_settings_accept_supported_pipeline() -> None:
     settings = Settings(**settings_values())  # type: ignore[arg-type]
-    assert settings.tts_model == "muga"
+    assert settings.tts_model == "bulbul:v3"
     assert settings.llm_provider is LLMProvider.GROQ
-    assert settings.stt_provider is STTProvider.GROQ
+    assert settings.stt_provider is STTProvider.SARVAM
     assert settings.groq_key == "groq-test"
+    assert settings.sarvam_key == "sarvam-test"
+
+
+def test_sarvam_speech_requires_api_key() -> None:
+    values = settings_values()
+    values["sarvam_api_key"] = None
+
+    try:
+        Settings(**values)  # type: ignore[arg-type]
+    except ValidationError as error:
+        assert "SARVAM_API_KEY" in str(error)
+    else:
+        raise AssertionError("Sarvam speech without an API key was accepted")
 
 
 def test_settings_accept_pulse_stt_provider() -> None:

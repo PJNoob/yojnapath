@@ -28,6 +28,7 @@ class STTProvider(StrEnum):
 
     GROQ = "groq"
     PULSE = "pulse"
+    SARVAM = "sarvam"
 
 
 class SipTransport(StrEnum):
@@ -57,7 +58,6 @@ class Settings(BaseSettings):
     smallest_ai_api_key: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     sarvam_api_key: SecretStr | None = None
-    rumik_api_key: SecretStr
     livekit_url: str | None = None
     livekit_api_key: SecretStr | None = None
     livekit_api_secret: SecretStr | None = None
@@ -75,9 +75,13 @@ class Settings(BaseSettings):
     groq_base_url: str
     openai_base_url: str | None = None
     sarvam_base_url: str | None = None
-    rumik_base_url: str
     smallest_base_url: str
     stt_provider: STTProvider
+    stt_sarvam_model: Literal["saaras:v3", "saaras:v4"] = "saaras:v4"
+    stt_sarvam_language: str = "hi-IN"
+    stt_sarvam_mode: Literal[
+        "transcribe", "translate", "verbatim", "translit", "codemix"
+    ] = "codemix"
     stt_groq_model: str = Field(min_length=1)
     stt_pulse_model: Literal["pulse"]
     stt_language: str = Field(min_length=2, max_length=32)
@@ -98,9 +102,9 @@ class Settings(BaseSettings):
     llm_model: str = Field(min_length=1)
     llm_reasoning_effort: Literal["none", "low", "medium", "high"]
     llm_max_completion_tokens: int = Field(gt=0, le=4096)
-    tts_model: Literal["muga"]
-    tts_tone: Literal["neutral", "happy", "excited", "sad", "angry", "whisper"]
-    tts_full_response_aggregation: bool
+    tts_model: Literal["bulbul:v3"] = "bulbul:v3"
+    tts_language: str = "hi-IN"
+    tts_speaker: str = "shubh"
 
     vad_min_speech_duration: float = Field(gt=0, le=2)
     vad_min_silence_duration: float = Field(gt=0, le=3)
@@ -111,13 +115,6 @@ class Settings(BaseSettings):
     false_interruption_timeout: float = Field(gt=0, le=5)
     aec_warmup_duration: float = Field(ge=0, le=10)
     preemptive_generation: bool
-
-    @field_validator("rumik_api_key")
-    @classmethod
-    def api_key_must_not_be_blank(cls, value: SecretStr) -> SecretStr:
-        if not value.get_secret_value().strip():
-            raise ValueError("API key must be set in the selected environment file")
-        return value
 
     @field_validator("endpointing_max_delay")
     @classmethod
@@ -176,6 +173,10 @@ class Settings(BaseSettings):
             or not self.smallest_ai_api_key.get_secret_value().strip()
         ):
             raise ValueError("SMALLEST_AI_API_KEY is required when STT_PROVIDER=pulse")
+        if self.stt_provider is STTProvider.SARVAM and (
+            self.sarvam_api_key is None or not self.sarvam_api_key.get_secret_value().strip()
+        ):
+            raise ValueError("SARVAM_API_KEY is required when STT_PROVIDER=sarvam")
         if self.stt_emotion_detection:
             raise ValueError(
                 "STT_EMOTION_DETECTION is unavailable in realtime LiveKit STT; "
@@ -183,15 +184,17 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def sarvam_tts_must_be_configured(self) -> Settings:
+        if self.sarvam_api_key is None or not self.sarvam_api_key.get_secret_value().strip():
+            raise ValueError("SARVAM_API_KEY is required for Sarvam TTS")
+        return self
+
     @property
     def groq_key(self) -> str:
         if self.groq_api_key is None:
             raise RuntimeError("Groq API key is not configured")
         return self.groq_api_key.get_secret_value()
-
-    @property
-    def rumik_key(self) -> str:
-        return self.rumik_api_key.get_secret_value()
 
     @property
     def smallest_key(self) -> str:

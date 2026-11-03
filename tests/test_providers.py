@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from voice_agent.config import LLMProvider, Settings, STTProvider
 from voice_agent.promptmanger import PROMPTS
-from voice_agent.providers import build_llm, build_stt
+from voice_agent.providers import build_llm, build_stt, build_tts
 
 
 def provider_settings(provider: LLMProvider) -> Settings:
@@ -28,6 +28,10 @@ def provider_settings(provider: LLMProvider) -> Settings:
 def stt_settings(provider: STTProvider) -> Settings:
     values = SimpleNamespace(
         stt_provider=provider,
+        stt_sarvam_model="saaras:v4",
+        stt_sarvam_language="hi-IN",
+        stt_sarvam_mode="codemix",
+        sarvam_key="sarvam-test",
         stt_groq_model="whisper-large-v3-turbo",
         stt_pulse_model="pulse",
         groq_key="groq-test",
@@ -49,6 +53,43 @@ def stt_settings(provider: STTProvider) -> Settings:
         stt_redact_pci=False,
     )
     return cast(Settings, values)
+
+
+def test_build_stt_routes_to_sarvam() -> None:
+    settings = stt_settings(STTProvider.SARVAM)
+
+    with patch("voice_agent.stt_providers.sarvam.STT") as constructor:
+        build_stt(settings)
+
+    constructor.assert_called_once_with(
+        model="saaras:v4",
+        language="hi-IN",
+        mode="codemix",
+        sample_rate=16000,
+        api_key="sarvam-test",
+    )
+
+
+def test_build_tts_routes_to_sarvam() -> None:
+    settings = cast(
+        Settings,
+        SimpleNamespace(
+            tts_model="bulbul:v3",
+            tts_language="hi-IN",
+            tts_speaker="shubh",
+            sarvam_key="sarvam-test",
+        ),
+    )
+
+    with patch("voice_agent.providers.sarvam.TTS") as constructor:
+        build_tts(settings)
+
+    constructor.assert_called_once_with(
+        model="bulbul:v3",
+        target_language_code="hi-IN",
+        speaker="shubh",
+        api_key="sarvam-test",
+    )
 
 
 def test_build_stt_routes_to_groq() -> None:

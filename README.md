@@ -12,9 +12,9 @@ flowchart LR
     Web -->|private beta code + short token| LiveKit[LiveKit Cloud]
     Visitor <-->|WebRTC audio| LiveKit
     Worker[Python LiveKit worker on GKE] <-->|agent dispatch + audio| LiveKit
-    Worker --> STT[Groq Whisper or Smallest Pulse STT]
-    Worker --> LLM[Groq, Sarvam, or OpenAI-compatible LLM]
-    Worker --> TTS[Rumik Muga TTS]
+    Worker --> STT[Sarvam Saaras STT]
+    Worker --> LLM[Groq Qwen 3.8 LLM]
+    Worker --> TTS[Sarvam Bulbul TTS]
 ```
 
 The browser submits its private beta access code to `POST /api/web-call/session`. The server validates it, explicitly dispatches the named agent, and returns a microphone-only LiveKit room token. The browser sends audio directly to LiveKit. The Python worker handles speech recognition, conversation, speech synthesis, and the server-enforced call duration. See [ARCHITECTURE.md](ARCHITECTURE.md) for component details and security limits.
@@ -32,7 +32,7 @@ MIGRATION_VERCEL_GKE.md      Deployment plan
 
 ## Local setup
 
-Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, and credentials for LiveKit, Rumik, and the selected STT/LLM providers.
+Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, a LiveKit project, a Groq API key, and a Sarvam API key. The default voice pipeline uses Groq's free-tier LLM and Sarvam for both speech recognition and speech synthesis. Groq's free tier has rate limits; Sarvam usage has its own pricing and credits.
 
 1. Copy the environment templates and fill in server-only credentials:
 
@@ -42,6 +42,8 @@ Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, and credentials 
    ```
 
    Set the same `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` in both files. Set worker `AGENT_NAME` and web `LIVEKIT_AGENT_NAME` to the same value, `yojnapath-web-agent` by default. For a local browser call, set `WEB_CALL_ACCESS_ENABLED=true` and a long private `WEB_CALL_ACCESS_CODE` in the web file.
+
+   The backend needs `GROQ_API_KEY` for the LLM and `SARVAM_API_KEY` for Saaras STT and Bulbul TTS. Leave optional provider and telemetry keys unset unless you explicitly switch to those integrations. The frontend does not receive Groq or Sarvam keys.
 
 2. Install dependencies from the repository root:
 

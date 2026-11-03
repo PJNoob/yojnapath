@@ -56,7 +56,6 @@ async def voice_agent(ctx: JobContext) -> None:
         agent=VoiceAssistant(
             instructions=PROMPTS.agent_instructions,
             greeting_instructions=PROMPTS.greeting_instructions,
-            fallback_tone=settings.tts_tone,
         ),
         room_options=build_room_options(),
     )

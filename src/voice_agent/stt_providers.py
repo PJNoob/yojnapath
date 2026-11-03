@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
 
-from livekit.plugins import groq, smallestai
+from livekit.plugins import groq, sarvam, smallestai
 
 from voice_agent.config import Settings, STTProvider
 from voice_agent.promptmanger import PROMPTS
@@ -58,10 +58,24 @@ class PulseSTTFactory(STTFactory):
         )
 
 
+class SarvamSTTFactory(STTFactory):
+    """Create Sarvam's streaming Saaras STT for Hindi and Hinglish."""
+
+    def create(self, settings: Settings) -> Any:
+        return sarvam.STT(
+            model=settings.stt_sarvam_model,
+            language=settings.stt_sarvam_language,
+            mode=settings.stt_sarvam_mode,
+            sample_rate=settings.stt_sample_rate,
+            api_key=settings.sarvam_key,
+        )
+
+
 STT_FACTORIES: Mapping[STTProvider, STTFactory] = MappingProxyType(
     {
         STTProvider.GROQ: GroqSTTFactory(),
         STTProvider.PULSE: PulseSTTFactory(),
+        STTProvider.SARVAM: SarvamSTTFactory(),
     }
 )
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from livekit.plugins import groq, openai, rumik_ai
+from livekit.plugins import groq, openai, sarvam
 
 from voice_agent.config import LLMProvider, Settings
 from voice_agent.stt_providers import build_stt
@@ -40,9 +40,9 @@ def build_llm(settings: Settings) -> Any:
 
 
 def build_tts(settings: Settings) -> Any:
-    return rumik_ai.TTS(
+    return sarvam.TTS(
         model=settings.tts_model,
-        api_key=settings.rumik_key,
-        base_url=settings.rumik_base_url,
-        full_response_aggregation=settings.tts_full_response_aggregation,
+        target_language_code=settings.tts_language,
+        speaker=settings.tts_speaker,
+        api_key=settings.sarvam_key,
     )
