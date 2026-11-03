@@ -59,6 +59,8 @@ Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, and credentials 
 
 4. Open `http://localhost:3000/call`, enter the access code, and allow microphone access. The browser call needs the worker to be registered with the same LiveKit project and agent name.
 
+From the repository root, the short commands are `make install`, `make dev`, `make build`, `make run`, and `make check`. `make dev` starts the worker and website together. Run `make build` before `make run`; `make run` starts the built website and worker with production commands.
+
 For a microphone and speaker test without LiveKit Cloud, run `uv run voice-agent console` after configuring the selected STT/LLM and TTS keys. Console mode does not exercise the website.
 
 ## Checks
