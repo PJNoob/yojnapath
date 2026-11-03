@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       max_duration_seconds: environment.WEB_CALL_MAX_DURATION_SECONDS,
     });
     const livekit = new LiveKitAPI({
-      host: environment.LIVEKIT_URL,
+      host: environment.LIVEKIT_INTERNAL_URL ?? environment.LIVEKIT_URL,
       apiKey: environment.LIVEKIT_API_KEY,
       secret: environment.LIVEKIT_API_SECRET,
     });

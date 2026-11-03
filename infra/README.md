@@ -30,7 +30,7 @@ In the `asymptotiq.com` zone, add A records `yojnapath` and `livekit.yojnapath`,
 
 ## Build and release all three services
 
-`.env.dev` must contain working Groq and Sarvam keys. `make prepare-production-env` generates one shared LiveKit API key pair and a private beta access code in three ignored, mode-0600 files. It does not overwrite existing files. Keep production env files out of Git.
+`.env.dev` must contain working Groq and Sarvam keys. `make prepare-production-env` generates one shared LiveKit API key pair and a private beta access code in three ignored, mode-0600 files. It sets the web server's `LIVEKIT_INTERNAL_URL` to the in-cluster Service and its browser-facing `LIVEKIT_URL` to the public `wss://` hostname. It does not overwrite existing files. Keep production env files out of Git.
 
 ```sh
 make prepare-production-env

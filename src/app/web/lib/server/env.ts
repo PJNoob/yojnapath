@@ -8,6 +8,7 @@ const webCallEnvironmentSchema = z.object({
   WEB_CALL_MAX_DURATION_SECONDS: z.coerce.number().int().min(60).max(900).default(300),
   WEB_CALL_TOKEN_TTL_SECONDS: z.coerce.number().int().min(30).max(300).default(120),
   LIVEKIT_URL: z.string().url().refine((url) => url.startsWith("wss://") || url.startsWith("ws://")),
+  LIVEKIT_INTERNAL_URL: z.string().url().refine((url) => url.startsWith("wss://") || url.startsWith("ws://")).optional(),
   LIVEKIT_API_KEY: z.string().min(1),
   LIVEKIT_API_SECRET: z.string().min(1),
   LIVEKIT_AGENT_NAME: z.string().min(1).default("yojnapath-web-agent"),

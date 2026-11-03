@@ -59,6 +59,7 @@ def main() -> int:
         "WEB_CALL_ACCESS_ENABLED": "true",
         "WEB_CALL_ACCESS_CODE": access_code,
         "LIVEKIT_URL": "wss://livekit.yojnapath.asymptotiq.com",
+        "LIVEKIT_INTERNAL_URL": "ws://livekit-signal.yojnapath.svc.cluster.local:7880",
         "LIVEKIT_API_KEY": key,
         "LIVEKIT_API_SECRET": secret,
         "LIVEKIT_AGENT_NAME": "yojnapath-web-agent",

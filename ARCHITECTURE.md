@@ -27,7 +27,7 @@ sequenceDiagram
 
 `src/voice_agent/main.py` registers the Python worker under `AGENT_NAME`. `session.py`, `stt_providers.py`, and `providers.py` construct the LiveKit audio pipeline. `promptmanger.py` directs the Hindi/Hinglish scheme conversation. `call_context.py` validates dispatch metadata and enforces a maximum session duration. Optional Langfuse tracing is in `telemetry.py`.
 
-For local development, `compose.yaml` runs LiveKit on localhost. Production runs a single LiveKit pod in GKE. The worker and Next.js server call its internal `livekit-signal` Service; browsers use `wss://livekit.yojnapath.asymptotiq.com` for signaling and a dedicated public UDP address for WebRTC media. The worker uses local Silero VAD and provider plugins, with no LiveKit Cloud inference dependency.
+For local development, `compose.yaml` runs LiveKit on localhost. Production runs a single LiveKit pod in GKE. The worker and Next.js server call its internal `livekit-signal` Service (`LIVEKIT_INTERNAL_URL` for Next.js); browsers receive `LIVEKIT_URL=wss://livekit.yojnapath.asymptotiq.com` for signaling and use a dedicated public UDP address for WebRTC media. The worker uses local Silero VAD and provider plugins, with no LiveKit Cloud inference dependency.
 
 ## Conversation behavior
 
