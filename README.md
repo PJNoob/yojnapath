@@ -28,6 +28,7 @@ tests/                       Python unit tests
 .env.dev.example             Worker environment template
 src/app/web/.env.local.example  Web server environment template
 MIGRATION_VERCEL_GKE.md      Deployment plan
+infra/                       GCP Terraform, worker Dockerfile, Helm chart
 ```
 
 ## Local setup
@@ -81,7 +82,7 @@ npm run build --prefix src/app/web
 
 ## Deployment
 
-The intended first release is **Next.js on Vercel and one persistent Python worker on GKE**. LiveKit carries the media, so the worker needs outbound connections and no public GKE ingress for browser audio. Set server-only web credentials in Vercel and provider credentials only on the worker. The private beta code and in-memory rate limiter are not sufficient for open public access or paid calls. See [MIGRATION_VERCEL_GKE.md](MIGRATION_VERCEL_GKE.md) for the release order, billing caveats, and production gates.
+The intended first release is **Next.js on Vercel and one persistent Python worker on GKE**. LiveKit carries the media, so the worker needs outbound connections and no public GKE ingress for browser audio. Set server-only web credentials in Vercel and provider credentials only on the worker. The private beta code and in-memory rate limiter are not sufficient for open public access or paid calls. See [infra/README.md](infra/README.md) for Terraform bootstrap, image, and Helm commands, then [MIGRATION_VERCEL_GKE.md](MIGRATION_VERCEL_GKE.md) for the rollout order and production gates.
 
 ## Known limits
 

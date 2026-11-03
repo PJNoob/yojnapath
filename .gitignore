@@ -1,4 +1,5 @@
 .env.dev
+.env.production
 .env.local
 .env
 .DS_Store
@@ -16,4 +17,10 @@ __pycache__/
 .ruff_cache/
 console-recordings/
 .telephony/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
 :memory:.ses

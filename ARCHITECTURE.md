@@ -42,7 +42,7 @@ The agent follows a flexible call path: greet, understand whether the caller has
 
 ## Deployment boundary
 
-Deploy `src/app/web` to Vercel and the Python package as a persistent worker on GKE. Set identical LiveKit project credentials on both sides and match `LIVEKIT_AGENT_NAME` to `AGENT_NAME`. The browser connects to LiveKit Cloud directly. The current repository has no GKE deployment manifests or container image yet; [MIGRATION_VERCEL_GKE.md](MIGRATION_VERCEL_GKE.md) lists those remaining steps.
+Deploy `src/app/web` to Vercel and the Python package as a persistent worker on GKE. Set identical LiveKit project credentials on both sides and match `LIVEKIT_AGENT_NAME` to `AGENT_NAME`. The browser connects to LiveKit Cloud directly. [infra/README.md](infra/README.md) documents the GCS state bootstrap, one-node GKE Standard cluster, Artifact Registry, Docker image, and Helm Deployment. [MIGRATION_VERCEL_GKE.md](MIGRATION_VERCEL_GKE.md) lists rollout steps and public launch gates.
 
 ## Before public use
 

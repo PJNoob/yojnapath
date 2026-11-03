@@ -3,6 +3,23 @@
 	dev-frontend dev-backend run-frontend run-backend run-both \
 	livekit-up livekit-down livekit-logs
 
+.PHONY: tf-bootstrap tf-init tf-validate tf-plan tf-deploy \
+	image-build image-push kube-context k8s-secret deploy-backend
+
+GCP_PROJECT_ID ?=
+GCP_REGION ?= asia-south1
+GCP_ZONE ?= asia-south1-a
+ENVIRONMENT ?= dev
+TF_STATE_BUCKET ?= $(GCP_PROJECT_ID)-yojnapath-terraform-state
+TF_PREFIX ?= yojnapath/$(ENVIRONMENT)/gke
+TF_BOOTSTRAP_DIR := infra/terraform/bootstrap
+TF_GKE_DIR := infra/terraform/gke
+IMAGE_TAG ?= dev
+VOICE_REPOSITORY := $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT_ID)/yojnapath-$(ENVIRONMENT)-voice-agent/voice-agent
+WORKER_ENV_FILE ?= .env.production
+K8S_NAMESPACE ?= yojnapath
+K8S_SECRET ?= yojnapath-worker-env
+
 WEB_DIR := src/app/web
 SERVICE := $(filter frontend backend,$(MAKECMDGOALS))
 
@@ -85,3 +102,47 @@ check:
 	uv run ruff check .
 	npm run lint --prefix $(WEB_DIR)
 	npm run typecheck --prefix $(WEB_DIR)
+
+# Create the versioned GCS backend once. Bootstrap retains local state: back it up securely.
+tf-bootstrap:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	terraform -chdir=$(TF_BOOTSTRAP_DIR) init -input=false
+	terraform -chdir=$(TF_BOOTSTRAP_DIR) apply -var="project_id=$(GCP_PROJECT_ID)" -var="region=$(GCP_REGION)" -var="state_bucket=$(TF_STATE_BUCKET)"
+
+tf-init:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	terraform -chdir=$(TF_GKE_DIR) init -input=false -reconfigure -backend-config="bucket=$(TF_STATE_BUCKET)" -backend-config="prefix=$(TF_PREFIX)"
+
+tf-validate:
+	terraform -chdir=$(TF_GKE_DIR) init -backend=false -input=false
+	terraform -chdir=$(TF_GKE_DIR) validate
+
+tf-plan: tf-init
+	terraform -chdir=$(TF_GKE_DIR) plan -var="project_id=$(GCP_PROJECT_ID)" -var="region=$(GCP_REGION)" -var="zone=$(GCP_ZONE)" -var="environment=$(ENVIRONMENT)"
+
+tf-deploy: tf-init
+	terraform -chdir=$(TF_GKE_DIR) apply -var="project_id=$(GCP_PROJECT_ID)" -var="region=$(GCP_REGION)" -var="zone=$(GCP_ZONE)" -var="environment=$(ENVIRONMENT)"
+
+image-build:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	docker buildx build --platform linux/amd64 --load -f infra/docker/voice-agent/Dockerfile -t $(VOICE_REPOSITORY):$(IMAGE_TAG) .
+
+image-push:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	gcloud auth configure-docker $(GCP_REGION)-docker.pkg.dev --quiet
+	docker push $(VOICE_REPOSITORY):$(IMAGE_TAG)
+
+kube-context:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	gcloud container clusters get-credentials yojnapath-$(ENVIRONMENT)-gke --zone $(GCP_ZONE) --project $(GCP_PROJECT_ID)
+
+k8s-secret: kube-context
+	@test -f "$(WORKER_ENV_FILE)" || { echo "Create $(WORKER_ENV_FILE) from .env.dev.example with production values" >&2; exit 2; }
+	kubectl create namespace $(K8S_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	kubectl -n $(K8S_NAMESPACE) create secret generic $(K8S_SECRET) --from-env-file=$(WORKER_ENV_FILE) --dry-run=client -o yaml | kubectl apply -f -
+
+deploy-backend: kube-context
+	@kubectl -n $(K8S_NAMESPACE) get secret $(K8S_SECRET) >/dev/null || { echo "Run make k8s-secret first" >&2; exit 2; }
+	helm upgrade --install voice-agent infra/helm/voice-agent --namespace $(K8S_NAMESPACE) --wait --timeout 10m \
+		--set-string image.repository=$(VOICE_REPOSITORY) --set-string image.tag=$(IMAGE_TAG) \
+		--set-string existingSecret=$(K8S_SECRET)
