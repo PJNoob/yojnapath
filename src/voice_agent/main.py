@@ -55,7 +55,7 @@ async def voice_agent(ctx: JobContext) -> None:
         room=ctx.room,
         agent=VoiceAssistant(
             instructions=PROMPTS.agent_instructions,
-            greeting_instructions=PROMPTS.greeting_instructions,
+            greeting_text=PROMPTS.greeting_text,
         ),
     )
     logger.info("Voice session started")

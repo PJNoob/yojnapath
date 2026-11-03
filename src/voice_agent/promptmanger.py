@@ -10,7 +10,7 @@ class PromptManager(BaseModel):
 
     transcription_context: str
     agent_instructions: str
-    greeting_instructions: str
+    greeting_text: str
 
 
 PROMPTS = PromptManager(
@@ -51,10 +51,8 @@ PROMPTS = PromptManager(
         "SAFETY: If a caller describes immediate danger, encourage local emergency help or a "
         "trusted person. Do not offer medical, legal, or financial advice as a professional."
     ),
-    greeting_instructions=(
-        "YojnaPath Sahayak ke roop mein Hindi/Hinglish mein call shuru karo. "
-        "Apna naam batao aur poochho: kisi khaas sarkari yojana ke baare "
-        "mein sawaal hai, ya category dhoondhne mein madad chahiye? Ek ya do chhoti spoken "
-        "lines, 15 se 30 words."
+    greeting_text=(
+        "नमस्ते, मैं योजना-पथ सहायक हूँ। क्या आपको किसी खास सरकारी योजना के बारे में "
+        "सवाल है, या योजना खोजने में मदद चाहिए?"
     ),
 )

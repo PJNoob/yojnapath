@@ -1,6 +1,6 @@
 image:
   repository: asia-south1-docker.pkg.dev/voice-agent-yojnapath/yojnapath-dev-web/web
-  tag: dev
+  tag: 0b8b27e
   pullPolicy: IfNotPresent
 existingSecret: yojnapath-web-env
 webHost: yojnapath.asymptotiq.com

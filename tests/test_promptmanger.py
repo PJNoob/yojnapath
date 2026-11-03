@@ -13,4 +13,4 @@ def test_scheme_prompt_keeps_voice_format_and_factual_limits() -> None:
     assert "no live scheme database" in instructions
     assert "Never invent current scheme names" in instructions
     assert "Do not ask for Aadhaar numbers" in instructions
-    assert "Hindi/Hinglish" in PROMPTS.greeting_instructions
+    assert "योजना-पथ सहायक" in PROMPTS.greeting_text

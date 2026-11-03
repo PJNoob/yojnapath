@@ -10,10 +10,10 @@ class VoiceAssistant(Agent):
         self,
         *,
         instructions: str,
-        greeting_instructions: str,
+        greeting_text: str,
     ) -> None:
         super().__init__(instructions=instructions)
-        self._greeting_instructions = greeting_instructions
+        self._greeting_text = greeting_text
 
     async def on_enter(self) -> None:
-        self.session.generate_reply(instructions=self._greeting_instructions)
+        self.session.say(self._greeting_text)
