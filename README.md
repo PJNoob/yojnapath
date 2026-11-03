@@ -43,23 +43,23 @@ Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, and credentials 
 
    Set the same `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` in both files. Set worker `AGENT_NAME` and web `LIVEKIT_AGENT_NAME` to the same value, `yojnapath-web-agent` by default. For a local browser call, set `WEB_CALL_ACCESS_ENABLED=true` and a long private `WEB_CALL_ACCESS_CODE` in the web file.
 
-2. Install dependencies:
+2. Install dependencies from the repository root:
 
    ```bash
-   uv sync --extra dev
-   npm ci --prefix src/app/web
+   make install backend
+   make install frontend
    ```
 
 3. Start the worker and website in separate terminals:
 
    ```bash
-   uv run voice-agent dev
-   npm run dev --prefix src/app/web
+   make run backend
+   make run frontend
    ```
 
 4. Open `http://localhost:3000/call`, enter the access code, and allow microphone access. The browser call needs the worker to be registered with the same LiveKit project and agent name.
 
-From the repository root, the short commands are `make install`, `make dev`, `make build`, `make run`, and `make check`. `make dev` starts the worker and website together. Run `make build` before `make run`; `make run` starts the built website and worker with production commands.
+`make install` installs both services. `make run` or `make dev` starts both local development processes together. `make build` builds both projects, and `make check` runs the test, lint, and type checks. The explicit `make install-frontend`, `make install-backend`, `make run-frontend`, and `make run-backend` targets are also available.
 
 For a microphone and speaker test without LiveKit Cloud, run `uv run voice-agent console` after configuring the selected STT/LLM and TTS keys. Console mode does not exercise the website.
 
