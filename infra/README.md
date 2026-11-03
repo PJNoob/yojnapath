@@ -28,6 +28,8 @@ make tf-deploy
 
 In the `asymptotiq.com` zone, add A records `yojnapath` and `livekit.yojnapath`, both pointing to `136.81.224.173` (Terraform `https_ip`). Set TTL Auto and **DNS only** (gray cloud). The LiveKit media IP `34.47.174.15` is used directly by WebRTC and needs no DNS record. The Python worker is internal and needs no DNS record. Certificate issuance starts after both names resolve to the Ingress IP.
 
+The web Helm chart's GKE `FrontendConfig` redirects HTTP to HTTPS for both hostnames. Browser microphone access requires a secure page, so use `https://yojnapath.asymptotiq.com/call`. Check the redirect with `curl -I http://yojnapath.asymptotiq.com/call`; it should return `301` with an HTTPS `Location` header.
+
 ## Build and release all three services
 
 `.env.dev` must contain working Groq and Sarvam keys. `make prepare-production-env` generates one shared LiveKit API key pair and a private beta access code in three ignored, mode-0600 files. It sets the web server's `LIVEKIT_INTERNAL_URL` to the in-cluster Service and its browser-facing `LIVEKIT_URL` to the public `wss://` hostname. It does not overwrite existing files. Keep production env files out of Git.
