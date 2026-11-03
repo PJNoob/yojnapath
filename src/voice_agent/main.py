@@ -11,7 +11,7 @@ from voice_agent.assistant import VoiceAssistant
 from voice_agent.call_context import parse_call_session_context
 from voice_agent.config import get_settings, load_environment
 from voice_agent.promptmanger import PROMPTS
-from voice_agent.session import build_room_options, build_session, build_vad
+from voice_agent.session import build_session, build_vad
 from voice_agent.telemetry import setup_langfuse
 
 load_environment()
@@ -57,7 +57,6 @@ async def voice_agent(ctx: JobContext) -> None:
             instructions=PROMPTS.agent_instructions,
             greeting_instructions=PROMPTS.greeting_instructions,
         ),
-        room_options=build_room_options(),
     )
     logger.info("Voice session started")
 

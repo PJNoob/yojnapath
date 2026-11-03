@@ -9,7 +9,7 @@ YojnaPath is a Hindi and Hinglish **browser voice guide for questions about Indi
 ```mermaid
 flowchart LR
     Visitor[Browser visitor] --> Web[Next.js on Vercel]
-    Web -->|private beta code + short token| LiveKit[LiveKit Cloud]
+    Web -->|private beta code + short token| LiveKit[LiveKit local or Cloud]
     Visitor <-->|WebRTC audio| LiveKit
     Worker[Python LiveKit worker on GKE] <-->|agent dispatch + audio| LiveKit
     Worker --> STT[Sarvam Saaras STT]
@@ -32,7 +32,7 @@ MIGRATION_VERCEL_GKE.md      Deployment plan
 
 ## Local setup
 
-Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, a LiveKit project, a Groq API key, and a Sarvam API key. The default voice pipeline uses Groq's free-tier LLM and Sarvam for both speech recognition and speech synthesis. Groq's free tier has rate limits; Sarvam usage has its own pricing and credits.
+Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, Docker Desktop, a Groq API key, and a Sarvam API key. The default voice pipeline uses Groq's free-tier LLM and Sarvam for both speech recognition and speech synthesis. Groq's free tier has rate limits; Sarvam usage has its own pricing and credits.
 
 1. Copy the environment templates and fill in server-only credentials:
 
@@ -41,7 +41,7 @@ Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, a LiveKit projec
    cp src/app/web/.env.local.example src/app/web/.env.local
    ```
 
-   Set the same `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` in both files. Set worker `AGENT_NAME` and web `LIVEKIT_AGENT_NAME` to the same value, `yojnapath-web-agent` by default. For a local browser call, set `WEB_CALL_ACCESS_ENABLED=true` and a long private `WEB_CALL_ACCESS_CODE` in the web file.
+   The templates target local Docker Compose LiveKit at `ws://localhost:7880` using its development-only `devkey`/`secret` pair. Set worker `AGENT_NAME` and web `LIVEKIT_AGENT_NAME` to the same value, `yojnapath-web-agent` by default. For a local browser call, set `WEB_CALL_ACCESS_ENABLED=true` and a long private `WEB_CALL_ACCESS_CODE` in the web file. Keep both `.env.dev` and `.env.local` out of Git.
 
    The backend needs `GROQ_API_KEY` for the LLM and `SARVAM_API_KEY` for Saaras STT and Bulbul TTS. Leave optional provider and telemetry keys unset unless you explicitly switch to those integrations. The frontend does not receive Groq or Sarvam keys.
 
@@ -52,18 +52,21 @@ Requirements: Python 3.11 or 3.12, Node.js 22.5 or newer, `uv`, a LiveKit projec
    make install frontend
    ```
 
-3. Start the worker and website in separate terminals:
+3. Start LiveKit, then the worker and website in separate terminals:
 
    ```bash
+   make livekit-up
    make run backend
    make run frontend
    ```
 
-4. Open `http://localhost:3000/call`, enter the access code, and allow microphone access. The browser call needs the worker to be registered with the same LiveKit project and agent name.
+   `make run backend` also starts LiveKit if it is not already running. It uses the supported `voice-agent start` mode and does not hot-reload Python code. The server is bound to localhost for same-machine development; it does not require Redis or a LiveKit Cloud account.
+
+4. Open `http://localhost:3000/call`, enter the access code from `src/app/web/.env.local`, and allow microphone access. The browser call needs the worker to be registered with the same LiveKit server and agent name. Stop the local server with `make livekit-down` when finished.
 
 `make install` installs both services. `make run` or `make dev` starts both local development processes together. `make build` builds both projects, and `make check` runs the test, lint, and type checks. The explicit `make install-frontend`, `make install-backend`, `make run-frontend`, and `make run-backend` targets are also available.
 
-For a microphone and speaker test without LiveKit Cloud, run `uv run voice-agent console` after configuring the selected STT/LLM and TTS keys. Console mode does not exercise the website.
+For a microphone and speaker test without a LiveKit server, run `uv run voice-agent console` after configuring the selected STT/LLM and TTS keys. Console mode does not exercise the website.
 
 ## Checks
 

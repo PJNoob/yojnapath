@@ -27,6 +27,8 @@ sequenceDiagram
 
 `src/voice_agent/main.py` registers the Python worker under `AGENT_NAME`. `session.py`, `stt_providers.py`, and `providers.py` construct the LiveKit audio pipeline. `promptmanger.py` directs the Hindi/Hinglish scheme conversation. `call_context.py` validates dispatch metadata and enforces a maximum session duration. Optional Langfuse tracing is in `telemetry.py`.
 
+For local development, `compose.yaml` runs a standalone LiveKit server on localhost. The worker and browser use `ws://localhost:7880`; the worker uses local Silero VAD turn detection and provider plugins, with no LiveKit Cloud inference or enhanced noise cancellation dependency. Production may instead use LiveKit Cloud; then use its `wss://` URL and project credentials in both server-side environments.
+
 ## Conversation behavior
 
 The agent follows a flexible call path: greet, understand whether the caller has a specific scheme or broad need, ask one clarifying question, explain general next steps, and close when the caller is done. This is **prompt guidance**, not a persisted stage graph. The worker has no scheme retrieval tool or current government data. The prompt prohibits fabricated scheme facts and asks callers to verify eligibility, deadlines, documents, and application steps with official sources.

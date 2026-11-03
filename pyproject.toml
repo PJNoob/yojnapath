@@ -11,7 +11,6 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
   "langfuse>=4.7,<5",
   "livekit-agents[groq,openai,sarvam,silero]~=1.8",
-  "livekit-plugins-noise-cancellation~=0.2",
   "livekit-plugins-smallestai~=1.6.4",
   "pydantic-settings~=2.10",
   "python-dotenv~=1.1",

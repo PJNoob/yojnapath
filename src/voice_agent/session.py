@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from livekit.agents import AgentSession, TurnHandlingOptions, inference, room_io
-from livekit.plugins import noise_cancellation, silero
+from livekit.agents import AgentSession, TurnHandlingOptions
+from livekit.plugins import silero
 
 from voice_agent.config import Settings
 from voice_agent.providers import build_llm, build_stt, build_tts
@@ -27,7 +27,7 @@ def build_session(settings: Settings, *, vad: Any) -> AgentSession[Any]:
         tts=build_tts(settings),
         vad=vad,
         turn_handling=TurnHandlingOptions(
-            turn_detection=inference.TurnDetector(),
+            turn_detection="vad",
             endpointing={
                 "min_delay": settings.endpointing_min_delay,
                 "max_delay": settings.endpointing_max_delay,
@@ -39,14 +39,4 @@ def build_session(settings: Settings, *, vad: Any) -> AgentSession[Any]:
             preemptive_generation={"enabled": settings.preemptive_generation},
         ),
         aec_warmup_duration=settings.aec_warmup_duration,
-    )
-
-
-def build_room_options() -> room_io.RoomOptions:
-    """Use LiveKit BVC for real room input; console mode supplies its own AEC path."""
-
-    return room_io.RoomOptions(
-        audio_input=room_io.AudioInputOptions(
-            noise_cancellation=noise_cancellation.BVC(),
-        ),
     )
