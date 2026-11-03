@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yojnapath-voice-agent"
+version = "0.1.0"
+description = "A Hindi and Hinglish government-scheme voice guide built with LiveKit."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "indic-transliteration~=2.3.82",
+  "langfuse>=4.7,<5",
+  "livekit-agents[groq,openai,silero]~=1.6",
+  "livekit-plugins-noise-cancellation~=0.2",
+  "livekit-plugins-rumik-ai~=0.2.2",
+  "livekit-plugins-smallestai~=1.6.4",
+  "pydantic-settings~=2.10",
+  "python-dotenv~=1.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy~=1.17",
+  "pytest~=8.4",
+  "ruff~=0.12",
+]
+
+[project.scripts]
+voice-agent = "voice_agent.main:run"
+voice-agent-telephony = "voice_agent.telephony:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/voice_agent"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["voice_agent"]
