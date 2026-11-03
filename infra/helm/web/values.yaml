@@ -1,0 +1,15 @@
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: IfNotPresent
+existingSecret: yojnapath-web-env
+webHost: yojnapath.asymptotiq.com
+livekitHost: livekit.yojnapath.asymptotiq.com
+httpsIPName: yojnapath-dev-https
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

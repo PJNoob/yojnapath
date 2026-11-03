@@ -37,13 +37,28 @@ resource "google_compute_subnetwork" "gke" {
 }
 
 resource "google_artifact_registry_repository" "services" {
-  for_each      = toset(["voice-agent", "web"])
+  for_each      = toset(["voice-agent", "web", "livekit"])
   project       = var.project_id
   location      = var.region
   repository_id = "${local.prefix}-${each.key}"
   description   = "YojnaPath ${each.key} container images"
   format        = "DOCKER"
   depends_on    = [google_project_service.required]
+}
+
+# One global address is shared by the website and LiveKit WebSocket Ingress.
+resource "google_compute_global_address" "https" {
+  name       = "${local.prefix}-https"
+  ip_version = "IPV4"
+  depends_on = [google_project_service.required]
+}
+
+# LiveKit's UDP media port needs a regional passthrough load balancer.
+resource "google_compute_address" "livekit_media" {
+  name       = "${local.prefix}-livekit-media"
+  region     = var.region
+  ip_version = "IPV4"
+  depends_on = [google_project_service.required]
 }
 
 resource "google_service_account" "nodes" {

@@ -1,13 +1,13 @@
 # GCP infrastructure
 
-This folder follows the AWS `infra-code` project's separation of Docker, Terraform, and Helm, adapted to YojnaPath's Vercel website and outbound LiveKit worker. Terraform creates a single-zone GKE Standard cluster with one `e2-standard-2` node, a custom VPC/subnet, a dedicated node service account, and two private Artifact Registry Docker repositories (`voice-agent` and `web`). The web repository is available if hosting changes later; the current site stays on Vercel. No public load balancer, NAT gateway, database, or extra VM is created.
+This folder contains Docker, Terraform, and Helm for three GKE workloads: the Next.js website, self-hosted LiveKit, and the Python voice worker. Terraform creates a one-node zonal GKE Standard cluster, three private Artifact Registry repositories, a global HTTPS address, and a regional LiveKit UDP address.
 
-The worker connects outbound to LiveKit Cloud, Groq, and Sarvam. Browser audio goes directly to LiveKit Cloud; no telephony or GKE ingress is needed. The GKE node has an external IP for outbound traffic. This is a low-resource private beta footprint, not a high-availability setup. A single-zone/node interruption can stop calls.
+The website and LiveKit signaling share one GKE HTTPS Ingress with a Google managed certificate. Browser media uses LiveKit's UDP load balancer on port 7882. The worker has no public endpoint and connects to the internal LiveKit Service, Groq, and Sarvam. This is a private beta footprint; a single-node interruption stops calls.
 
 ## Prerequisites
 
 - A billing-enabled Google Cloud project, billing budget/alerts, permissions to enable APIs and create GKE, IAM, Artifact Registry, and GCS resources.
-- `terraform >= 1.12`, Google Cloud CLI, `kubectl`, Helm 3, Docker, and a LiveKit Cloud project.
+- `terraform >= 1.12`, Google Cloud CLI, `gke-gcloud-auth-plugin`, `kubectl`, Helm 3, Docker, and Python 3.
 - Authenticate with `gcloud auth login` and `gcloud auth application-default login`; set `GCP_PROJECT_ID` to the real project ID. Use the same Google identity for Terraform and `gcloud`.
 - Bootstrap needs `serviceusage.googleapis.com` enabled in the project. Enable it once in the Cloud console or with `gcloud services enable serviceusage.googleapis.com --project "$GCP_PROJECT_ID"`.
 
@@ -24,21 +24,28 @@ make tf-deploy
 
 `tf-bootstrap` creates a versioned, private GCS Terraform state bucket using local bootstrap state. Keep `infra/terraform/bootstrap/terraform.tfstate` in secure backup; it is Git-ignored. `tf-plan` initializes the GCS backend and previews resources. `tf-deploy` asks Terraform for interactive approval before creating billable resources. `make tf-validate` runs static Terraform validation. The main state is under `yojnapath/dev/gke` in the bucket. GCS state locking is handled by Terraform's GCS backend.
 
-## Build and release the worker
+## Cloudflare DNS and TLS
 
-Create a production worker environment file from `.env.dev.example` and replace at least `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `GROQ_API_KEY`, and `SARVAM_API_KEY`. Set `LIVEKIT_URL` to the hosted `wss://` URL, `ENVIRONMENT=production`, `DEV_SERVER_HOST=0.0.0.0`, and keep `AGENT_NAME=yojnapath-web-agent` aligned with Vercel's `LIVEKIT_AGENT_NAME`. Use `WORKER_ENV_FILE` to point to the file. Do not put the local `devkey`/`secret`, localhost URL, or live secrets into Git. `.env.production` is ignored.
+In the `asymptotiq.com` zone, add A records `yojnapath` and `livekit.yojnapath`, both pointing to `136.81.224.173` (Terraform `https_ip`). Set TTL Auto and **DNS only** (gray cloud). The LiveKit media IP `34.47.174.15` is used directly by WebRTC and needs no DNS record. The Python worker is internal and needs no DNS record. Certificate issuance starts after both names resolve to the Ingress IP.
+
+## Build and release all three services
+
+`.env.dev` must contain working Groq and Sarvam keys. `make prepare-production-env` generates one shared LiveKit API key pair and a private beta access code in three ignored, mode-0600 files. It does not overwrite existing files. Keep production env files out of Git.
 
 ```sh
+make prepare-production-env
 export IMAGE_TAG=$(git rev-parse --short HEAD)
-make image-build image-push
-make k8s-secret WORKER_ENV_FILE=.env.production
-make deploy-backend
+make image-build-livekit image-push-livekit
+make image-build-backend image-push-backend
+make image-build-frontend image-push-frontend
+make k8s-secret-livekit k8s-secret-backend k8s-secret-frontend
+make helm-deploy-livekit helm-deploy-backend helm-deploy-frontend
 ```
 
-`image-push` requires Artifact Registry Writer permission for your Google identity. `k8s-secret` creates a Kubernetes Secret in the `yojnapath` namespace from the production file. Helm uses the existing Secret and starts one worker replica. The container image never copies `.env` files. The worker has no Kubernetes Service or Ingress. Rotate provider and LiveKit keys in both the worker Secret and Vercel as applicable, then restart the Deployment. Kubernetes Secrets are stored in cluster state; limit cluster access and enable GKE secret encryption policies if required for your deployment.
+Image push requires Artifact Registry Writer permission. Helm uses existing Kubernetes Secrets and starts one replica of each service. The images never copy `.env` files. Rotate the shared LiveKit key in all three Secrets together and restart their Deployments. Restrict Kubernetes Secret access.
 
-For the website, deploy `src/app/web` on Vercel and set its server-side LiveKit credentials, access code, and site origin as described in [the rollout plan](../MIGRATION_VERCEL_GKE.md).
+Check `kubectl -n yojnapath get pods,svc,ingress,managedcertificate`. Test `https://yojnapath.asymptotiq.com/call` after the certificate becomes Active.
 
 ## Cost and operations
 
-The zonal cluster may qualify for Google's monthly GKE management-fee credit, but the node VM, disk, network egress, Artifact Registry storage, and external voice providers are billed separately. The $300 trial credit is finite. Review the region-specific estimate in the Google Cloud Pricing Calculator before applying and use a billing budget alert. The node is on demand so a conversation is less likely to be interrupted than on a Spot VM. Scale only after measuring active-call CPU and memory. Use `kubectl -n yojnapath logs deploy/voice-agent` and `kubectl -n yojnapath rollout status deploy/voice-agent` for health checks.
+The trial credit is finite. GKE node, disk, two load balancers, network egress, and Artifact Registry are billed by Google; Groq and Sarvam are separate. Set a billing budget alert. Scale after measuring active-call CPU and memory. The UDP-only LiveKit media path may fail on networks that block UDP; add TURN/TCP fallback before a broad launch.

@@ -4,7 +4,11 @@
 	livekit-up livekit-down livekit-logs
 
 .PHONY: tf-bootstrap tf-init tf-validate tf-plan tf-deploy \
-	image-build image-push kube-context k8s-secret deploy-backend
+	image-build image-push image-build-frontend image-build-backend image-build-livekit \
+	image-push-frontend image-push-backend image-push-livekit \
+	kube-context k8s-secret k8s-secret-frontend k8s-secret-backend k8s-secret-livekit \
+	deploy-backend helm-deploy-frontend helm-deploy-backend helm-deploy-livekit \
+	prepare-production-env
 
 GCP_PROJECT_ID ?=
 GCP_REGION ?= asia-south1
@@ -16,9 +20,20 @@ TF_BOOTSTRAP_DIR := infra/terraform/bootstrap
 TF_GKE_DIR := infra/terraform/gke
 IMAGE_TAG ?= dev
 VOICE_REPOSITORY := $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT_ID)/yojnapath-$(ENVIRONMENT)-voice-agent/voice-agent
+WEB_REPOSITORY := $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT_ID)/yojnapath-$(ENVIRONMENT)-web/web
+LIVEKIT_REPOSITORY := $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT_ID)/yojnapath-$(ENVIRONMENT)-livekit/livekit
+WEB_HOST ?= yojnapath.asymptotiq.com
+LIVEKIT_HOST ?= livekit.yojnapath.asymptotiq.com
+HTTPS_IP_NAME ?= yojnapath-$(ENVIRONMENT)-https
+MEDIA_IP ?= $(shell terraform -chdir=$(TF_GKE_DIR) output -raw livekit_media_ip 2>/dev/null)
 WORKER_ENV_FILE ?= .env.production
+WEB_ENV_FILE ?= src/app/web/.env.production
+LIVEKIT_KEYS_FILE ?= .env.livekit
 K8S_NAMESPACE ?= yojnapath
 K8S_SECRET ?= yojnapath-worker-env
+
+prepare-production-env:
+	python3 infra/scripts/prepare-production-env.py
 
 WEB_DIR := src/app/web
 SERVICE := $(filter frontend backend,$(MAKECMDGOALS))
@@ -127,10 +142,34 @@ image-build:
 	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
 	docker buildx build --platform linux/amd64 --load -f infra/docker/voice-agent/Dockerfile -t $(VOICE_REPOSITORY):$(IMAGE_TAG) .
 
+image-build-backend: image-build
+
+image-build-frontend:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	docker buildx build --platform linux/amd64 --load -f infra/docker/web/Dockerfile \
+		--build-arg NEXT_PUBLIC_SITE_URL=https://$(WEB_HOST) -t $(WEB_REPOSITORY):$(IMAGE_TAG) .
+
+image-build-livekit:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	docker buildx build --platform linux/amd64 --load -f infra/docker/livekit/Dockerfile \
+		-t $(LIVEKIT_REPOSITORY):$(IMAGE_TAG) .
+
 image-push:
 	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
 	gcloud auth configure-docker $(GCP_REGION)-docker.pkg.dev --quiet
 	docker push $(VOICE_REPOSITORY):$(IMAGE_TAG)
+
+image-push-backend: image-push
+
+image-push-frontend:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	gcloud auth configure-docker $(GCP_REGION)-docker.pkg.dev --quiet
+	docker push $(WEB_REPOSITORY):$(IMAGE_TAG)
+
+image-push-livekit:
+	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
+	gcloud auth configure-docker $(GCP_REGION)-docker.pkg.dev --quiet
+	docker push $(LIVEKIT_REPOSITORY):$(IMAGE_TAG)
 
 kube-context:
 	@test -n "$(GCP_PROJECT_ID)" || { echo "Set GCP_PROJECT_ID" >&2; exit 2; }
@@ -141,8 +180,36 @@ k8s-secret: kube-context
 	kubectl create namespace $(K8S_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
 	kubectl -n $(K8S_NAMESPACE) create secret generic $(K8S_SECRET) --from-env-file=$(WORKER_ENV_FILE) --dry-run=client -o yaml | kubectl apply -f -
 
+k8s-secret-backend: k8s-secret
+
+k8s-secret-frontend: kube-context
+	@test -f "$(WEB_ENV_FILE)" || { echo "Create $(WEB_ENV_FILE) with production web values" >&2; exit 2; }
+	kubectl create namespace $(K8S_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	kubectl -n $(K8S_NAMESPACE) create secret generic yojnapath-web-env --from-env-file=$(WEB_ENV_FILE) --dry-run=client -o yaml | kubectl apply -f -
+
+k8s-secret-livekit: kube-context
+	@test -f "$(LIVEKIT_KEYS_FILE)" || { echo "Create $(LIVEKIT_KEYS_FILE) with LIVEKIT_KEYS=key: secret" >&2; exit 2; }
+	kubectl create namespace $(K8S_NAMESPACE) --dry-run=client -o yaml | kubectl apply -f -
+	kubectl -n $(K8S_NAMESPACE) create secret generic yojnapath-livekit-keys --from-env-file=$(LIVEKIT_KEYS_FILE) --dry-run=client -o yaml | kubectl apply -f -
+
 deploy-backend: kube-context
 	@kubectl -n $(K8S_NAMESPACE) get secret $(K8S_SECRET) >/dev/null || { echo "Run make k8s-secret first" >&2; exit 2; }
 	helm upgrade --install voice-agent infra/helm/voice-agent --namespace $(K8S_NAMESPACE) --wait --timeout 10m \
 		--set-string image.repository=$(VOICE_REPOSITORY) --set-string image.tag=$(IMAGE_TAG) \
 		--set-string existingSecret=$(K8S_SECRET)
+
+helm-deploy-backend: deploy-backend
+
+helm-deploy-livekit: kube-context
+	@test -n "$(MEDIA_IP)" || { echo "Run make tf-deploy first to reserve the media IP" >&2; exit 2; }
+	@kubectl -n $(K8S_NAMESPACE) get secret yojnapath-livekit-keys >/dev/null || { echo "Run make k8s-secret-livekit first" >&2; exit 2; }
+	helm upgrade --install livekit infra/helm/livekit --namespace $(K8S_NAMESPACE) --wait --timeout 10m \
+		--set-string image.repository=$(LIVEKIT_REPOSITORY) --set-string image.tag=$(IMAGE_TAG) \
+		--set-string mediaIP=$(MEDIA_IP)
+
+helm-deploy-frontend: kube-context
+	@kubectl -n $(K8S_NAMESPACE) get secret yojnapath-web-env >/dev/null || { echo "Run make k8s-secret-frontend first" >&2; exit 2; }
+	helm upgrade --install web infra/helm/web --namespace $(K8S_NAMESPACE) --wait --timeout 10m \
+		--set-string image.repository=$(WEB_REPOSITORY) --set-string image.tag=$(IMAGE_TAG) \
+		--set-string webHost=$(WEB_HOST) --set-string livekitHost=$(LIVEKIT_HOST) \
+		--set-string httpsIPName=$(HTTPS_IP_NAME)

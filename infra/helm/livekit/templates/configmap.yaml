@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  LIVEKIT_CONFIG: |
+    port: 7880
+    log_level: info
+    rtc:
+      udp_port: 7882
+      use_external_ip: false
+      node_ip: {{ required "mediaIP is required" .Values.mediaIP | quote }}

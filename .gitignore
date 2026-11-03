@@ -1,5 +1,6 @@
 .env.dev
 .env.production
+.env.livekit
 .env.local
 .env
 .DS_Store

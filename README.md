@@ -8,8 +8,8 @@ YojnaPath is a Hindi and Hinglish **browser voice guide for questions about Indi
 
 ```mermaid
 flowchart LR
-    Visitor[Browser visitor] --> Web[Next.js on Vercel]
-    Web -->|private beta code + short token| LiveKit[LiveKit local or Cloud]
+    Visitor[Browser visitor] --> Web[Next.js on GKE]
+    Web -->|private beta code + short token| LiveKit[LiveKit on GKE]
     Visitor <-->|WebRTC audio| LiveKit
     Worker[Python LiveKit worker on GKE] <-->|agent dispatch + audio| LiveKit
     Worker --> STT[Sarvam Saaras STT]
@@ -27,7 +27,7 @@ src/voice_agent/             Python LiveKit worker and provider configuration
 tests/                       Python unit tests
 .env.dev.example             Worker environment template
 src/app/web/.env.local.example  Web server environment template
-MIGRATION_VERCEL_GKE.md      Deployment plan
+DEPLOYMENT_GKE.md            Deployment plan
 infra/                       GCP Terraform, worker Dockerfile, Helm chart
 ```
 
@@ -82,7 +82,7 @@ npm run build --prefix src/app/web
 
 ## Deployment
 
-The intended first release is **Next.js on Vercel and one persistent Python worker on GKE**. LiveKit carries the media, so the worker needs outbound connections and no public GKE ingress for browser audio. Set server-only web credentials in Vercel and provider credentials only on the worker. The private beta code and in-memory rate limiter are not sufficient for open public access or paid calls. See [infra/README.md](infra/README.md) for Terraform bootstrap, image, and Helm commands, then [MIGRATION_VERCEL_GKE.md](MIGRATION_VERCEL_GKE.md) for the rollout order and production gates.
+The first release runs **Next.js, LiveKit, and the Python worker in one GKE cluster**. Google Cloud HTTPS Ingress serves `yojnapath.asymptotiq.com` and `livekit.yojnapath.asymptotiq.com`; LiveKit media uses a separate UDP load balancer. The worker has no public Service. The private beta code and in-memory rate limiter are only suitable for a small beta. See [infra/README.md](infra/README.md) for deployment commands and [DEPLOYMENT_GKE.md](DEPLOYMENT_GKE.md) for rollout checks.
 
 ## Known limits
 

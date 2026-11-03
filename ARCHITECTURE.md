@@ -27,7 +27,7 @@ sequenceDiagram
 
 `src/voice_agent/main.py` registers the Python worker under `AGENT_NAME`. `session.py`, `stt_providers.py`, and `providers.py` construct the LiveKit audio pipeline. `promptmanger.py` directs the Hindi/Hinglish scheme conversation. `call_context.py` validates dispatch metadata and enforces a maximum session duration. Optional Langfuse tracing is in `telemetry.py`.
 
-For local development, `compose.yaml` runs a standalone LiveKit server on localhost. The worker and browser use `ws://localhost:7880`; the worker uses local Silero VAD turn detection and provider plugins, with no LiveKit Cloud inference or enhanced noise cancellation dependency. Production may instead use LiveKit Cloud; then use its `wss://` URL and project credentials in both server-side environments.
+For local development, `compose.yaml` runs LiveKit on localhost. Production runs a single LiveKit pod in GKE. The worker and Next.js server call its internal `livekit-signal` Service; browsers use `wss://livekit.yojnapath.asymptotiq.com` for signaling and a dedicated public UDP address for WebRTC media. The worker uses local Silero VAD and provider plugins, with no LiveKit Cloud inference dependency.
 
 ## Conversation behavior
 
@@ -42,7 +42,7 @@ The agent follows a flexible call path: greet, understand whether the caller has
 
 ## Deployment boundary
 
-Deploy `src/app/web` to Vercel and the Python package as a persistent worker on GKE. Set identical LiveKit project credentials on both sides and match `LIVEKIT_AGENT_NAME` to `AGENT_NAME`. The browser connects to LiveKit Cloud directly. [infra/README.md](infra/README.md) documents the GCS state bootstrap, one-node GKE Standard cluster, Artifact Registry, Docker image, and Helm Deployment. [MIGRATION_VERCEL_GKE.md](MIGRATION_VERCEL_GKE.md) lists rollout steps and public launch gates.
+Deploy all three images to Artifact Registry and three Helm releases to the one-node GKE cluster. A Google Cloud Ingress with a managed certificate routes the website and LiveKit signaling by hostname through one global IP. A regional UDP load balancer exposes LiveKit media. The Python worker has no public endpoint. All three components share one LiveKit API key pair through separate Kubernetes Secrets. Match `LIVEKIT_AGENT_NAME` to worker `AGENT_NAME`. The single node is a beta footprint: its failure interrupts calls, and some networks that block UDP cannot establish media until TURN/TCP fallback is added. [infra/README.md](infra/README.md) has commands and [DEPLOYMENT_GKE.md](DEPLOYMENT_GKE.md) has rollout checks.
 
 ## Before public use
 
