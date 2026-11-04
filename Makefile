@@ -10,7 +10,7 @@
 	deploy-backend helm-deploy-frontend helm-deploy-backend helm-deploy-livekit \
 	prepare-production-env
 
-GCP_PROJECT_ID ?=
+GCP_PROJECT_ID ?= voice-agent-yojnapath
 GCP_REGION ?= asia-south1
 GCP_ZONE ?= asia-south1-a
 ENVIRONMENT ?= dev
