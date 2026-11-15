@@ -3,7 +3,7 @@
 	dev-frontend dev-backend run-frontend run-backend run-both \
 	livekit-up livekit-down livekit-logs
 
-.PHONY: tf-bootstrap tf-init tf-validate tf-plan tf-deploy \
+.PHONY: tf-bootstrap tf-init tf-validate tf-plan tf-verify-plan tf-deploy \
 	image-build image-push image-build-frontend image-build-backend image-build-livekit \
 	image-push-frontend image-push-backend image-push-livekit \
 	kube-context k8s-secret k8s-secret-frontend k8s-secret-backend k8s-secret-livekit \
@@ -134,6 +134,13 @@ tf-validate:
 
 tf-plan: tf-init
 	terraform -chdir=$(TF_GKE_DIR) plan -var="project_id=$(GCP_PROJECT_ID)" -var="region=$(GCP_REGION)" -var="zone=$(GCP_ZONE)" -var="environment=$(ENVIRONMENT)"
+
+# Plans without locking or applying, then fails if any protected resource would be deleted or replaced.
+tf-verify-plan: tf-init
+	terraform -chdir=$(TF_GKE_DIR) plan -lock=false -input=false -out=verify.tfplan -var="project_id=$(GCP_PROJECT_ID)" -var="region=$(GCP_REGION)" -var="zone=$(GCP_ZONE)" -var="environment=$(ENVIRONMENT)" $(TF_EXTRA_ARGS)
+	terraform -chdir=$(TF_GKE_DIR) show -json verify.tfplan | jq -e '[.resource_changes[] | select(.address | test("google_container_cluster|google_compute_network|google_compute_subnetwork|google_container_node_pool.voice|google_compute_global_address.https|google_compute_address.livekit_media|google_service_account.nodes")) | select(.change.actions | index("delete"))] | length == 0' >/dev/null && echo "OK: no protected resource is deleted or replaced"
+	terraform -chdir=$(TF_GKE_DIR) show -json verify.tfplan | jq -r '.resource_changes[] | select(.change.actions != ["no-op"]) | "\(.change.actions|join(",")) \(.address)"'
+	@rm -f $(TF_GKE_DIR)/verify.tfplan
 
 tf-deploy: tf-init
 	terraform -chdir=$(TF_GKE_DIR) apply -var="project_id=$(GCP_PROJECT_ID)" -var="region=$(GCP_REGION)" -var="zone=$(GCP_ZONE)" -var="environment=$(ENVIRONMENT)"
