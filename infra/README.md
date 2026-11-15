@@ -51,3 +51,9 @@ Check `kubectl -n yojnapath get pods,svc,ingress,managedcertificate`. Test `http
 ## Cost and operations
 
 The trial credit is finite. GKE node, disk, two load balancers, network egress, and Artifact Registry are billed by Google; Groq and Sarvam are separate. Set a billing budget alert. Scale after measuring active-call CPU and memory. The UDP-only LiveKit media path may fail on networks that block UDP; add TURN/TCP fallback before a broad launch.
+
+## Vendor-onboarding host setup (Shared VPC)
+
+`infra/terraform/gke/shared_vpc.tf` holds the host-side resources for the separate vendor-onboarding project: Shared VPC host and service-project attachment, private services access range, a `vendor-pool` node pool with its own node identity, and a separate HTTPS global address. Everything is off by default (`enable_vendor_onboarding`, `enable_shared_vpc_host`, `vendor_service_project_id`). The vendor project's Terraform consumes the outputs and must not manage these resources.
+
+Order: move the project into the organization (one-off, `gcloud projects move`), grant `roles/compute.xpnAdmin` at the org, run `make tf-verify-plan TF_EXTRA_ARGS="-var=enable_vendor_onboarding=true ..."`, review, then `make tf-deploy`. The new pool is tainted `workload=vendor-onboarding:NoSchedule`; the vendor chart must tolerate it. The cluster stays single-zone: a zone outage affects both projects' workloads.
